@@ -1,0 +1,122 @@
+package controllers
+
+import (
+	"net/http"
+
+	"go-notes-api/src/config"
+	"go-notes-api/src/helpers"
+	"go-notes-api/src/models"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+var db *gorm.DB = config.ConnectDB()
+
+
+
+func CreateNote(c *gin.Context) {
+    var data models.Note
+
+    if err := c.ShouldBindJSON(&data); err != nil {
+        helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
+        return
+    }
+
+    if data.Title == "" {
+        helpers.SendResponse(c, http.StatusBadRequest, "failed", "Title is required", "", nil)
+        return
+    }
+
+    note := models.Note{
+        Title:       data.Title,
+        Description: data.Description,
+        Tags:        data.Tags,
+    }
+
+    if err := db.Create(&note).Error; err != nil {
+        helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
+        return
+    }
+
+    helpers.SendResponse(c, http.StatusCreated, "success", "", "Note created successfully", note)
+}
+
+func GetNotes (c *gin.Context) {
+	var notes []models.Note
+
+	if err := db.Find(&notes).Error; err != nil {
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
+    	return
+	}
+
+	helpers.SendResponse(c, http.StatusCreated, "success", "", "Successfully get all notes", notes)
+}
+
+func GetNote (c *gin.Context) {
+	id := c.Param("id")
+
+	var note models.Note
+
+	if err := db.First(&note, id).Error; err != nil {
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
+    	return
+	}
+
+	helpers.SendResponse(c, http.StatusCreated, "success", "", "Successfully get note", note)
+}
+
+func UpdateNote (c *gin.Context) {
+	id := c.Param("id")
+
+	var data models.Note
+
+	if err := c.ShouldBindJSON(&data); err != nil {
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
+    	return
+	}
+
+	note := make(map[string]interface{})
+
+	if data.Title != "" {
+		note["title"] = data.Title
+	}
+
+	if data.Description != "" {
+		note["description"] = data.Description
+	}
+
+	if len(data.Tags) > 0 {
+		note["tags"] = data.Tags
+	}
+
+	if len(note) == 0 {
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", "No fields to update", "", nil)
+		return
+	}
+
+	if err := db.Model(&models.Note{}).Where("id = ?", id).Updates(note).Error; err != nil {
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
+    	return
+	}
+
+	helpers.SendResponse(c, http.StatusCreated, "success", "", "Successfully update note", note)
+}
+
+func DeleteNote (c *gin.Context) {
+	id := c.Param("id")
+
+	var note models.Note
+
+	if err := db.First(&note, "id = ?", id).Error; err != nil {
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
+		return
+	}
+
+	if err := db.Where("id = ?", id).Delete(&note).Error; err != nil {
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
+		return
+	}
+
+	helpers.SendResponse(c, http.StatusCreated, "success", "", "Successfully delete note", nil)
+}
