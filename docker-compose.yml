@@ -16,6 +16,7 @@ services:
 
     db_postgres:
         image: postgres:latest
+        hostname: ${DB_HOST}
         environment:
             POSTGRES_USER: ${DB_USER}
             POSTGRES_PASSWORD: ${DB_PASSWORD}

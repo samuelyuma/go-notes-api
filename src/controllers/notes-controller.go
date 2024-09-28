@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"time"
 
 	"go-notes-api/src/config"
 	"go-notes-api/src/helpers"
@@ -13,7 +14,13 @@ import (
 
 var db *gorm.DB = config.ConnectDB()
 
+func HealthCheck(c *gin.Context) {
+	var date, _ = time.Parse(time.RFC822, "02 Sep 15 08:00 WIB")
 
+	var formattedDate = date.Format("Monday, 01 January 2024 - 15:04 MST")
+
+	helpers.SendResponse(c, http.StatusOK, "success", "", "Hello World!", formattedDate)
+}
 
 func CreateNote(c *gin.Context) {
     var data models.Note
