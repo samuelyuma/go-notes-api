@@ -35,7 +35,7 @@ func ConnectDB() *gorm.DB {
 	if errorDB != nil {
 		panic("Failed to connect postgres database!")
 	} else {
-		fmt.Println("Successfully connect to postgres database!")
+		fmt.Println("Successfully connect to postgres database")
 	}
 
 	return db
@@ -47,7 +47,7 @@ func DisconnectDB(db *gorm.DB) {
 	if err != nil {
 		panic("Failed to disconnect with postgres database")
 	} else {
-		fmt.Println("Successfully disconnect to postgres database!")
+		fmt.Println("Successfully disconnect to postgres database")
 	}
 
 	dbPostgres.Close()

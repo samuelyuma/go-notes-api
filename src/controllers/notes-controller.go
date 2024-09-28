@@ -12,49 +12,44 @@ import (
 	"gorm.io/gorm"
 )
 
-var db *gorm.DB = config.ConnectDB()
+var db *gorm.DB
+
+func init() {
+	db = config.ConnectDB()
+}
 
 func HealthCheck(c *gin.Context) {
-	var date, _ = time.Parse(time.RFC822, "02 Sep 15 08:00 WIB")
-
-	var formattedDate = date.Format("Monday, 01 January 2024 - 15:04 MST")
-
-	helpers.SendResponse(c, http.StatusOK, "success", "", "Hello World!", formattedDate)
+	date := time.Now().Format("Monday, 02 January 2006 - 15:04 MST")
+	helpers.SendResponse(c, http.StatusOK, "success", "", "Hello World!", date)
 }
 
 func CreateNote(c *gin.Context) {
-    var data models.Note
+    var note models.Note
 
-    if err := c.ShouldBindJSON(&data); err != nil {
-        helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
-        return
-    }
+	if err := c.ShouldBindJSON(&note); err != nil {
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", "Invalid input", "", nil)
+		return
+	}
 
-    if data.Title == "" {
-        helpers.SendResponse(c, http.StatusBadRequest, "failed", "Title is required", "", nil)
-        return
-    }
+	if note.Title == "" {
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", "Title is required", "", nil)
+		return
+	}
 
-    note := models.Note{
-        Title:       data.Title,
-        Description: data.Description,
-        Tags:        data.Tags,
-    }
+	if err := db.Create(&note).Error; err != nil {
+		helpers.SendResponse(c, http.StatusInternalServerError, "failed", "Failed to create note", "", nil)
+		return
+	}
 
-    if err := db.Create(&note).Error; err != nil {
-        helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
-        return
-    }
-
-    helpers.SendResponse(c, http.StatusCreated, "success", "", "Note created successfully", note)
+	helpers.SendResponse(c, http.StatusCreated, "success", "", "Note created successfully", note)
 }
 
 func GetNotes (c *gin.Context) {
 	var notes []models.Note
 
 	if err := db.Find(&notes).Error; err != nil {
-		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
-    	return
+		helpers.SendResponse(c, http.StatusInternalServerError, "failed", "Failed to get all notes", "", nil)
+		return
 	}
 
 	helpers.SendResponse(c, http.StatusOK, "success", "", "Successfully get all notes", notes)
@@ -65,9 +60,13 @@ func GetNote (c *gin.Context) {
 
 	var note models.Note
 
-	if err := db.Where("id = ?", id).First(&note).Error; err != nil {
-		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
-    	return
+	if err := db.First(&note, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			helpers.SendResponse(c, http.StatusNotFound, "failed", "Note not found", "", nil)
+		} else {
+			helpers.SendResponse(c, http.StatusInternalServerError, "failed", "Failed to get note", "", nil)
+		}
+		return
 	}
 
 	helpers.SendResponse(c, http.StatusOK, "success", "", "Successfully get note", note)
@@ -75,55 +74,56 @@ func GetNote (c *gin.Context) {
 
 func UpdateNote (c *gin.Context) {
 	id := c.Param("id")
-
 	var data models.Note
 
 	if err := c.ShouldBindJSON(&data); err != nil {
-		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
-    	return
+		helpers.SendResponse(c, http.StatusBadRequest, "failed", "Invalid input", "", nil)
+		return
 	}
 
-	note := make(map[string]interface{})
-
+	updates := map[string]interface{}{}
 	if data.Title != "" {
-		note["title"] = data.Title
+		updates["title"] = data.Title
 	}
-
 	if data.Description != "" {
-		note["description"] = data.Description
+		updates["description"] = data.Description
 	}
-
 	if len(data.Tags) > 0 {
-		note["tags"] = data.Tags
+		updates["tags"] = data.Tags
 	}
 
-	if len(note) == 0 {
+	if len(updates) == 0 {
 		helpers.SendResponse(c, http.StatusBadRequest, "failed", "No fields to update", "", nil)
 		return
 	}
 
-	if err := db.Model(&models.Note{}).Where("id = ?", id).Updates(note).Error; err != nil {
-		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
-    	return
+	result := db.Model(&models.Note{}).Where("id = ?", id).Updates(updates)
+	if result.Error != nil {
+		helpers.SendResponse(c, http.StatusInternalServerError, "failed", "Failed to update note", "", nil)
+		return
+	}
+	if result.RowsAffected == 0 {
+		helpers.SendResponse(c, http.StatusNotFound, "failed", "Note not found", "", nil)
+		return
 	}
 
-	helpers.SendResponse(c, http.StatusOK, "success", "", "Successfully update note", note)
+	helpers.SendResponse(c, http.StatusOK, "success", "", "Successfully update note", updates)
 }
 
 func DeleteNote (c *gin.Context) {
 	id := c.Param("id")
 
-	var note models.Note
+	result := db.Delete(&models.Note{}, "id = ?", id)
 
-	if err := db.First(&note, "id = ?", id).Error; err != nil {
-		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
-		return
-	}
+    if result.Error != nil {
+        helpers.SendResponse(c, http.StatusInternalServerError, "failed", result.Error.Error(), "", nil)
+        return
+    }
 
-	if err := db.Where("id = ?", id).Delete(&note).Error; err != nil {
-		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
-		return
-	}
+    if result.RowsAffected == 0 {
+        helpers.SendResponse(c, http.StatusNotFound, "failed", "Note not found", "", nil)
+        return
+    }
 
 	helpers.SendResponse(c, http.StatusOK, "success", "", "Successfully delete note", nil)
 }
