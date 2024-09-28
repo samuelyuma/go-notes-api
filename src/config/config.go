@@ -19,14 +19,18 @@ func ConnectDB() *gorm.DB {
 	}
 
 	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASS")
+	dbPass := os.Getenv("DB_PASSWORD")
 	dbHost := os.Getenv("DB_HOST")
 	dbName := os.Getenv("DB_NAME")
+	dbPort := os.Getenv("DB_PORT")
 
-	database := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", dbUser , dbPass, dbHost , dbName)
+	database := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Jakarta", dbHost, dbUser, dbPass, dbName, dbPort)
 	db, errorDB := gorm.Open(postgres.Open(database), &gorm.Config{})
 
-	db.AutoMigrate(&models.NoteColumn{})
+	err := db.AutoMigrate(&models.NoteColumn{})
+	if err != nil {
+		panic(fmt.Sprintf("Failed to migrate the database: %v", err))
+	}
 
 	if errorDB != nil {
 		panic("Failed to connect postgres database!")

@@ -50,7 +50,7 @@ func GetNotes (c *gin.Context) {
     	return
 	}
 
-	helpers.SendResponse(c, http.StatusCreated, "success", "", "Successfully get all notes", notes)
+	helpers.SendResponse(c, http.StatusOK, "success", "", "Successfully get all notes", notes)
 }
 
 func GetNote (c *gin.Context) {
@@ -58,12 +58,12 @@ func GetNote (c *gin.Context) {
 
 	var note models.Note
 
-	if err := db.First(&note, id).Error; err != nil {
+	if err := db.Where("id = ?", id).First(&note).Error; err != nil {
 		helpers.SendResponse(c, http.StatusBadRequest, "failed", err.Error(), "", nil)
     	return
 	}
 
-	helpers.SendResponse(c, http.StatusCreated, "success", "", "Successfully get note", note)
+	helpers.SendResponse(c, http.StatusOK, "success", "", "Successfully get note", note)
 }
 
 func UpdateNote (c *gin.Context) {
@@ -100,7 +100,7 @@ func UpdateNote (c *gin.Context) {
     	return
 	}
 
-	helpers.SendResponse(c, http.StatusCreated, "success", "", "Successfully update note", note)
+	helpers.SendResponse(c, http.StatusOK, "success", "", "Successfully update note", note)
 }
 
 func DeleteNote (c *gin.Context) {
@@ -118,5 +118,5 @@ func DeleteNote (c *gin.Context) {
 		return
 	}
 
-	helpers.SendResponse(c, http.StatusCreated, "success", "", "Successfully delete note", nil)
+	helpers.SendResponse(c, http.StatusOK, "success", "", "Successfully delete note", nil)
 }

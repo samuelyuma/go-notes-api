@@ -17,3 +17,7 @@ type NoteColumn struct {
 	Tags        pq.StringArray `json:"tags" gorm:"type:text[]"`
 	Description string         `json:"description" gorm:"type:text"`
 }
+
+func (NoteColumn) TableName() string {
+    return "notes"
+}
